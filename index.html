@@ -15,8 +15,6 @@ button,input{font-family:inherit}
 .title-row{display:flex;align-items:center;gap:10px}
 .title{font-size:18px;font-weight:500;color:#1a1a1a}
 .badge{font-size:12px;background:#f1efe8;color:#5f5e5a;border:0.5px solid rgba(0,0,0,0.1);border-radius:8px;padding:2px 8px}
-.badge.loading{opacity:0.5}
-.toolbar{display:flex;gap:8px;align-items:center}
 .btn-export{display:flex;align-items:center;gap:5px;font-size:13px;padding:6px 14px;background:#eaf3de;color:#3b6d11;border:0.5px solid #97c459;border-radius:8px;cursor:pointer}
 .btn-export:hover{background:#c0dd97}
 .btn-export:disabled{opacity:0.5;cursor:not-allowed}
@@ -51,7 +49,7 @@ button,input{font-family:inherit}
 .slot-past{height:100%;display:flex;align-items:center;justify-content:center;font-size:10px;color:#bbb}
 .slot-free{width:100%;height:100%;min-height:36px;background:transparent;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;color:transparent;transition:background 0.1s,color 0.1s}
 .slot-free:hover{background:#f5f5f3;color:#bbb}
-.loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,0.7);display:flex;align-items:center;justify-content:center;z-index:10;border-radius:12px;font-size:13px;color:#5f5e5a}
+.loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,0.75);display:flex;align-items:center;justify-content:center;z-index:10;border-radius:12px;font-size:13px;color:#5f5e5a}
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.38);z-index:50;align-items:center;justify-content:center}
 .modal-bg.open{display:flex}
 .modal{background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:12px;padding:1.25rem 1.5rem;width:min(380px,90vw);max-height:90vh;overflow-y:auto}
@@ -94,7 +92,6 @@ button,input{font-family:inherit}
   <div class="loading-overlay" id="main-loading">
     <i class="ti ti-loader" style="font-size:18px;margin-right:6px"></i>連線資料庫中...
   </div>
-
   <h1 class="sr-only">電腦使用預約系統</h1>
   <div class="top-bar">
     <div class="title-row">
@@ -105,11 +102,9 @@ button,input{font-family:inherit}
         <i class="ti ti-circle" style="font-size:10px"></i> 連線中
       </span>
     </div>
-    <div class="toolbar">
-      <button class="btn-export" id="btn-export" onclick="exportExcel()" disabled>
-        <i class="ti ti-table-export" style="font-size:14px"></i>匯出 Excel
-      </button>
-    </div>
+    <button class="btn-export" id="btn-export" onclick="exportExcel()" disabled>
+      <i class="ti ti-table-export" style="font-size:14px"></i>匯出 Excel
+    </button>
   </div>
 
   <div class="nav-row">
@@ -135,11 +130,11 @@ button,input{font-family:inherit}
     <div class="modal-sub" id="book-sub"></div>
     <div style="margin-bottom:12px">
       <div style="font-size:12px;color:#5f5e5a;margin-bottom:5px">預約時長</div>
-      <div class="dur-grid">
-        <button class="dur-btn active" data-v="1" onclick="selDur(this)">30 分</button>
-        <button class="dur-btn" data-v="2" onclick="selDur(this)">1 小時</button>
-        <button class="dur-btn" data-v="3" onclick="selDur(this)">1.5 小時</button>
-        <button class="dur-btn" data-v="4" onclick="selDur(this)">2 小時</button>
+      <div class="dur-grid" id="dur-grid">
+        <button class="dur-btn active" data-v="1" onclick="pickDuration(this)">30 分</button>
+        <button class="dur-btn" data-v="2" onclick="pickDuration(this)">1 小時</button>
+        <button class="dur-btn" data-v="3" onclick="pickDuration(this)">1.5 小時</button>
+        <button class="dur-btn" data-v="4" onclick="pickDuration(this)">2 小時</button>
       </div>
     </div>
     <div class="field">
@@ -181,299 +176,286 @@ button,input{font-family:inherit}
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 // ── Supabase 設定 ──────────────────────────────────────────
-const SUPABASE_URL = "https://lonvqyzpihusqhmqgkcr.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvbnZxeXpwaWh1c3FobXFna2NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTQ5OTQsImV4cCI6MjA5NTU3MDk5NH0.U5cHX1blOrAIx75D0kbxIDsyfbNYivTGwe8Bnl-s6yw";
-const TABLE = "bookings";
+var SUPABASE_URL = "https://lonvqyzpihusqhmqgkcr.supabase.co";
+var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvbnZxeXpwaWh1c3FobXFna2NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTQ5OTQsImV4cCI6MjA5NTU3MDk5NH0.U5cHX1blOrAIx75D0kbxIDsyfbNYivTGwe8Bnl-s6yw";
+var TABLE = "bookings";
 
-const api = (path, opts={}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-  headers: {
-    "apikey": SUPABASE_KEY,
-    "Authorization": `Bearer ${SUPABASE_KEY}`,
-    "Content-Type": "application/json",
-    "Prefer": opts.prefer || "",
-    ...opts.headers
-  },
-  ...opts
-});
-
-async function dbGetWeek(dateList) {
-  const inList = dateList.map(d=>`"${d}"`).join(",");
-  const res = await api(`${TABLE}?date=in.(${inList})&order=date,slot_start`);
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-async function dbInsert(row) {
-  const res = await api(TABLE, {
-    method: "POST",
-    prefer: "return=representation",
-    body: JSON.stringify(row)
+function apiCall(path, opts) {
+  opts = opts || {};
+  return fetch(SUPABASE_URL + "/rest/v1/" + path, {
+    method: opts.method || "GET",
+    headers: Object.assign({
+      "apikey": SUPABASE_KEY,
+      "Authorization": "Bearer " + SUPABASE_KEY,
+      "Content-Type": "application/json",
+      "Prefer": opts.prefer || ""
+    }, opts.headers || {}),
+    body: opts.body || undefined
   });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.message || "新增失敗");
-  }
-  return res.json();
 }
 
-async function dbDelete(id) {
-  const res = await api(`${TABLE}?id=eq.${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(await res.text());
+function dbGetWeek(dateList) {
+  var inList = dateList.map(function(d){ return '"' + d + '"'; }).join(",");
+  return apiCall(TABLE + "?date=in.(" + inList + ")&order=date,slot_start")
+    .then(function(res){ if (!res.ok) return res.text().then(function(t){throw new Error(t);}); return res.json(); });
 }
 
-async function dbGetAll() {
-  const res = await api(`${TABLE}?order=date,slot_start`);
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+function dbInsert(row) {
+  return apiCall(TABLE, { method:"POST", prefer:"return=representation", body: JSON.stringify(row) })
+    .then(function(res){
+      if (!res.ok) return res.json().then(function(e){ throw new Error(e.message||"新增失敗"); });
+      return res.json();
+    });
+}
+
+function dbDelete(id) {
+  return apiCall(TABLE + "?id=eq." + id, { method:"DELETE" })
+    .then(function(res){ if (!res.ok) return res.text().then(function(t){throw new Error(t);}); });
+}
+
+function dbGetAll() {
+  return apiCall(TABLE + "?order=date,slot_start")
+    .then(function(res){ if (!res.ok) return res.text().then(function(t){throw new Error(t);}); return res.json(); });
 }
 
 // ── 常數 ──────────────────────────────────────────────────
-const OPEN_H=8, CLOSE_H=18, SLOTS=(CLOSE_H-OPEN_H)*2;
-const DAYS_ZH=["日","一","二","三","四","五","六"];
+var OPEN_H = 8, CLOSE_H = 18, SLOTS = (CLOSE_H - OPEN_H) * 2;
+var DAYS_ZH = ["日","一","二","三","四","五","六"];
 
 // ── 狀態 ──────────────────────────────────────────────────
-let weekOf = weekStart(new Date());
-// bookings[date][slot_start] = row (含 .id, .name, .dept, .phone, .duration, .slot_start, .start)
-let bookings = {};
-let selSlot = null, selDur = 1, detailId = null;
-let connected = false;
+var currentWeekOf = weekStart(new Date());
+var bookings = {};
+var selSlot = null;
+var chosenDuration = 1;
+var detailId = null;
 
 // ── 日期工具 ──────────────────────────────────────────────
-function weekStart(d){const t=new Date(d);t.setHours(0,0,0,0);const day=t.getDay();t.setDate(t.getDate()-day+1);return t;}
-function addDays(d,n){const t=new Date(d);t.setDate(t.getDate()+n);return t;}
-function dayKey(d){return d.toISOString().slice(0,10);}
-function slotTime(i){const m=OPEN_H*60+i*30;const h=Math.floor(m/60),mm=m%60;return(h<10?"0":"")+h+":"+(mm===0?"00":"30");}
-function slotLabel(i){return slotTime(i)+" – "+slotTime(i+1);}
-function isWeekend(d){const day=d.getDay();return day===0||day===6;}
-function weekDays(){return Array.from({length:7},(_,i)=>addDays(weekOf,i));}
-function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function weekStart(d) {
+  var t = new Date(d); t.setHours(0,0,0,0);
+  t.setDate(t.getDate() - t.getDay() + 1); return t;
+}
+function addDays(d, n) { var t = new Date(d); t.setDate(t.getDate()+n); return t; }
+function dayKey(d) { return d.toISOString().slice(0,10); }
+function slotTime(i) {
+  var m = OPEN_H*60 + i*30, h = Math.floor(m/60), mm = m%60;
+  return (h<10?"0":"")+h+":"+(mm===0?"00":"30");
+}
+function slotLabel(i) { return slotTime(i)+" – "+slotTime(i+1); }
+function isWeekend(d) { var day = d.getDay(); return day===0||day===6; }
+function getWeekDays() { return Array.from({length:7}, function(_,i){ return addDays(currentWeekOf,i); }); }
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
 
-// ── 從 DB rows 建立本地快取結構 ──────────────────────────
+// ── 建立快取 ──────────────────────────────────────────────
 function buildCache(rows) {
-  const cache = {};
-  rows.forEach(row => {
-    const dk = row.date;
+  var cache = {};
+  rows.forEach(function(row) {
+    var dk = row.date;
     if (!cache[dk]) cache[dk] = {};
-    // 填入所有佔用的 slot
-    for (let j = 0; j < row.duration; j++) {
-      cache[dk][row.slot_start + j] = { ...row, start: row.slot_start };
+    for (var j=0; j<row.duration; j++) {
+      cache[dk][row.slot_start+j] = Object.assign({}, row, {start: row.slot_start});
     }
   });
   return cache;
 }
 
-// ── 載入當週資料 ──────────────────────────────────────────
-async function loadWeek() {
-  const days = weekDays().map(dayKey);
-  const rows = await dbGetWeek(days);
-  bookings = buildCache(rows);
+function loadWeek() {
+  var days = getWeekDays().map(dayKey);
+  return dbGetWeek(days).then(function(rows){ bookings = buildCache(rows); });
 }
 
 // ── 初始化 ────────────────────────────────────────────────
-async function init() {
-  try {
-    await loadWeek();
-    connected = true;
+function init() {
+  loadWeek().then(function() {
     setConnStatus("ok");
     document.getElementById("btn-export").disabled = false;
-  } catch(e) {
+    document.getElementById("main-loading").style.display = "none";
+    render();
+  }).catch(function(e) {
     setConnStatus("fail");
+    document.getElementById("main-loading").style.display = "none";
     showToast("⚠ 資料庫連線失敗：" + e.message, "error");
-  }
-  document.getElementById("main-loading").style.display = "none";
-  render();
+    render();
+  });
 }
 
 function setConnStatus(state) {
-  const el = document.getElementById("conn-status");
-  const icons = {ok:"ti-circle-check", fail:"ti-circle-x", loading:"ti-circle"};
-  const labels = {ok:"已連線", fail:"連線失敗", loading:"連線中"};
-  el.className = `conn-status ${state}`;
-  el.innerHTML = `<i class="ti ${icons[state]}" style="font-size:10px"></i> ${labels[state]}`;
+  var el = document.getElementById("conn-status");
+  var icons = {ok:"ti-circle-check", fail:"ti-circle-x", loading:"ti-circle"};
+  var labels = {ok:"已連線", fail:"連線失敗", loading:"連線中"};
+  el.className = "conn-status " + state;
+  el.innerHTML = '<i class="ti '+icons[state]+'" style="font-size:10px"></i> '+labels[state];
 }
 
-// ── 算最大可選時長 ────────────────────────────────────────
+// ── 最大時長 ──────────────────────────────────────────────
 function maxDur(dk, si) {
-  const bk = bookings[dk] || {};
-  let max = 1;
-  for (let j=1; j<=3; j++) {
-    const next = si+j;
+  var bk = bookings[dk] || {};
+  var max = 1;
+  for (var j=1; j<=3; j++) {
+    var next = si+j;
     if (next >= SLOTS || bk[next]) break;
     max = j+1;
   }
   return max;
 }
 
-// ── 渲染週視圖 ────────────────────────────────────────────
+// ── 渲染 ──────────────────────────────────────────────────
 function render() {
-  const days = weekDays();
-  const todayKey = dayKey(new Date());
+  var days = getWeekDays();
+  var todayKey = dayKey(new Date());
+  document.getElementById("week-label").textContent = getWeekLabel();
 
-  document.getElementById("week-label").textContent = weekLabel();
-  const seen = new Set();
-  let total = 0;
-  days.forEach(d => {
+  var seen = {}, total = 0;
+  days.forEach(function(d) {
     if (isWeekend(d)) return;
-    const dk = dayKey(d);
-    const bk = bookings[dk] || {};
-    Object.values(bk).forEach(b => {
-      const key = `${dk}-${b.start}`;
-      if (!seen.has(key)) { seen.add(key); total++; }
+    var dk = dayKey(d), bk = bookings[dk] || {};
+    Object.keys(bk).forEach(function(si) {
+      var b = bk[si], key = dk+"-"+b.start;
+      if (!seen[key]) { seen[key]=true; total++; }
     });
   });
-  document.getElementById("total-badge").textContent = `本週 ${total} 筆`;
+  document.getElementById("total-badge").textContent = "本週 "+total+" 筆";
 
-  const now = new Date();
-  const grid = document.getElementById("cal-grid");
-  let html = "";
+  var now = new Date();
+  var html = "";
 
-  html += `<div class="hdr-time"><i class="ti ti-clock" style="font-size:13px"></i></div>`;
-  days.forEach((d, di) => {
-    const weekend = isWeekend(d), isToday = dayKey(d)===todayKey;
-    const cls = "hdr-day" + (weekend?" weekend":"") + (isToday?" today":"");
-    const br = di<6 ? "border-right:0.5px solid rgba(0,0,0,0.1)" : "";
-    html += `<div class="${cls}" style="${br}">
-      <div class="dow">星期${DAYS_ZH[d.getDay()]}</div>
-      <div class="date">${d.getMonth()+1}/${d.getDate()}</div>
-    </div>`;
+  html += '<div class="hdr-time"><i class="ti ti-clock" style="font-size:13px"></i></div>';
+  days.forEach(function(d, di) {
+    var weekend = isWeekend(d), isToday = dayKey(d)===todayKey;
+    var cls = "hdr-day"+(weekend?" weekend":"")+(isToday?" today":"");
+    var br = di<6 ? "border-right:0.5px solid rgba(0,0,0,0.1)" : "";
+    html += '<div class="'+cls+'" style="'+br+'"><div class="dow">星期'+DAYS_ZH[d.getDay()]+'</div><div class="date">'+(d.getMonth()+1)+"/"+d.getDate()+'</div></div>';
   });
 
-  for (let si=0; si<SLOTS; si++) {
-    const isLastRow = si===SLOTS-1;
-    const rb = isLastRow ? "" : "border-bottom:0.5px solid rgba(0,0,0,0.1)";
-    html += `<div class="time-cell" style="${rb}">${si%2===0?slotTime(si):""}</div>`;
+  for (var si=0; si<SLOTS; si++) {
+    var isLastRow = si===SLOTS-1;
+    var rb = isLastRow ? "" : "border-bottom:0.5px solid rgba(0,0,0,0.1)";
+    html += '<div class="time-cell" style="'+rb+'">'+(si%2===0?slotTime(si):"")+'</div>';
 
-    days.forEach((d, di) => {
-      const dk = dayKey(d);
-      const bk = bookings[dk] || {};
-      const b = bk[si];
-      const weekend = isWeekend(d);
-      const isLastCol = di===6;
-      const slotDate = new Date(d);
-      slotDate.setHours(Math.floor((OPEN_H*60+si*30)/60), (OPEN_H*60+si*30)%60, 0, 0);
-      const isPast = !weekend && slotDate < now;
-      const borderR = isLastCol ? "" : "border-right:0.5px solid rgba(0,0,0,0.1)";
-      const borderB = isLastRow ? "" : "border-bottom:0.5px solid rgba(0,0,0,0.1)";
+    days.forEach(function(d, di) {
+      var dk = dayKey(d), bk = bookings[dk]||{}, b = bk[si];
+      var weekend = isWeekend(d), isLastCol = di===6;
+      var slotDate = new Date(d);
+      var sMin = OPEN_H*60+si*30;
+      slotDate.setHours(Math.floor(sMin/60), sMin%60, 0, 0);
+      var isPast = !weekend && slotDate < now;
+      var borderR = isLastCol ? "" : "border-right:0.5px solid rgba(0,0,0,0.1)";
+      var borderB = isLastRow ? "" : "border-bottom:0.5px solid rgba(0,0,0,0.1)";
 
       if (weekend) {
-        html += `<div class="slot-cell weekend" style="${borderR};${borderB}">
-          <div class="slot-weekend-fill">${si===Math.floor(SLOTS/2)?'<span style="font-size:9px;color:#bbb">休息</span>':""}</div>
-        </div>`;
+        html += '<div class="slot-cell weekend" style="'+borderR+';'+borderB+'"><div class="slot-weekend-fill">'+(si===Math.floor(SLOTS/2)?'<span style="font-size:9px;color:#bbb">休息</span>':"")+'</div></div>';
       } else if (b && b.start===si) {
-        html += `<div class="slot-cell" style="${borderR};${borderB};padding:2px" onclick="showDetail('${b.id}')">
-          <div class="slot-booked">
-            <div class="bname">${esc(b.name)}</div>
-            <div class="bdept">${esc(b.dept)}</div>
-          </div>
-        </div>`;
+        html += '<div class="slot-cell" style="'+borderR+';'+borderB+';padding:2px" onclick="showDetail(\''+b.id+'\')"><div class="slot-booked"><div class="bname">'+esc(b.name)+'</div><div class="bdept">'+esc(b.dept)+'</div></div></div>';
       } else if (b && b.start!==si) {
-        html += `<div class="slot-cell" style="${borderR};${borderB};padding:0" onclick="showDetail('${b.id}')">
-          <div class="slot-cont"></div>
-        </div>`;
+        html += '<div class="slot-cell" style="'+borderR+';'+borderB+';padding:0" onclick="showDetail(\''+b.id+'\')"><div class="slot-cont"></div></div>';
       } else if (isPast) {
-        html += `<div class="slot-cell" style="${borderR};${borderB}">
-          <div class="slot-past">—</div>
-        </div>`;
+        html += '<div class="slot-cell" style="'+borderR+';'+borderB+'"><div class="slot-past">—</div></div>';
       } else {
-        html += `<div class="slot-cell" style="${borderR};${borderB};padding:0">
-          <button class="slot-free" onclick="openBook('${dk}',${si})" aria-label="預約 ${dk} ${slotLabel(si)}">
-            <i class="ti ti-plus" style="font-size:11px"></i>
-          </button>
-        </div>`;
+        html += '<div class="slot-cell" style="'+borderR+';'+borderB+';padding:0"><button class="slot-free" onclick="openBook(\''+dk+'\','+si+')" aria-label="預約 '+dk+' '+slotLabel(si)+'"><i class="ti ti-plus" style="font-size:11px"></i></button></div>';
       }
     });
   }
-  grid.innerHTML = html;
+  document.getElementById("cal-grid").innerHTML = html;
 }
 
-function weekLabel() {
-  const days = weekDays();
-  const s=days[0], e=days[6];
-  return `${s.getFullYear()}/${s.getMonth()+1}/${s.getDate()} – ${e.getMonth()+1}/${e.getDate()}`;
+function getWeekLabel() {
+  var days = getWeekDays(), s=days[0], e=days[6];
+  return s.getFullYear()+"/"+(s.getMonth()+1)+"/"+s.getDate()+" – "+(e.getMonth()+1)+"/"+e.getDate();
 }
 
 // ── 切換週 ────────────────────────────────────────────────
-async function goToday() { weekOf=weekStart(new Date()); await refreshWeek(); }
-async function changeWeek(n) { weekOf=addDays(weekOf,n*7); await refreshWeek(); }
+function goToday() { currentWeekOf = weekStart(new Date()); refreshWeek(); }
+function changeWeek(n) { currentWeekOf = addDays(currentWeekOf, n*7); refreshWeek(); }
 
-async function refreshWeek() {
+function refreshWeek() {
   document.getElementById("main-loading").style.display = "flex";
-  try { await loadWeek(); } catch(e) { showToast("載入失敗："+e.message,"error"); }
-  document.getElementById("main-loading").style.display = "none";
-  render();
+  loadWeek().then(function(){
+    document.getElementById("main-loading").style.display = "none";
+    render();
+  }).catch(function(e){
+    document.getElementById("main-loading").style.display = "none";
+    showToast("載入失敗："+e.message, "error");
+  });
 }
 
-// ── 開啟預約 Modal ────────────────────────────────────────
+// ── 預約 Modal ────────────────────────────────────────────
 function openBook(dk, si) {
-  selSlot={dk, si:parseInt(si)}; selDur=1;
-  document.getElementById("book-sub").textContent = `${dk}　${slotLabel(parseInt(si))}`;
-  ["f-name","f-dept","f-phone"].forEach(id=>{document.getElementById(id).value="";document.getElementById(id).classList.remove("err");});
-  ["e-name","e-dept","e-phone"].forEach(id=>document.getElementById(id).textContent="");
-  const md = maxDur(dk, parseInt(si));
-  document.querySelectorAll(".dur-btn").forEach(btn=>{
-    const v=parseInt(btn.dataset.v);
+  si = parseInt(si);
+  selSlot = {dk:dk, si:si};
+  chosenDuration = 1;
+  document.getElementById("book-sub").textContent = dk+"　"+slotLabel(si);
+  ["f-name","f-dept","f-phone"].forEach(function(id){
+    document.getElementById(id).value="";
+    document.getElementById(id).classList.remove("err");
+  });
+  ["e-name","e-dept","e-phone"].forEach(function(id){ document.getElementById(id).textContent=""; });
+  var md = maxDur(dk, si);
+  document.querySelectorAll(".dur-btn").forEach(function(btn){
+    var v = parseInt(btn.dataset.v);
     btn.disabled = v>md;
     btn.classList.toggle("active", v===1);
   });
-  setBookModalLoading(false);
+  setBookLoading(false);
   document.getElementById("book-modal").classList.add("open");
-  setTimeout(()=>document.getElementById("f-name").focus(),50);
+  setTimeout(function(){ document.getElementById("f-name").focus(); }, 50);
 }
 
 function closeBook() { document.getElementById("book-modal").classList.remove("open"); selSlot=null; }
 
-function selDur(btn) {
-  selDur=parseInt(btn.dataset.v);
-  document.querySelectorAll(".dur-btn").forEach(b=>b.classList.remove("active"));
+function pickDuration(btn) {
+  chosenDuration = parseInt(btn.dataset.v);
+  document.querySelectorAll(".dur-btn").forEach(function(b){ b.classList.remove("active"); });
   btn.classList.add("active");
 }
 
-function setBookModalLoading(on) {
+function setBookLoading(on) {
   document.getElementById("book-confirm-btn").disabled = on;
   document.getElementById("book-cancel-btn").disabled = on;
   document.getElementById("book-confirm-btn").textContent = on ? "儲存中..." : "確認預約";
 }
 
-async function confirmBook() {
-  const name=document.getElementById("f-name").value.trim();
-  const dept=document.getElementById("f-dept").value.trim();
-  const phone=document.getElementById("f-phone").value.trim();
-  let ok=true;
+function confirmBook() {
+  var name = document.getElementById("f-name").value.trim();
+  var dept = document.getElementById("f-dept").value.trim();
+  var phone = document.getElementById("f-phone").value.trim();
+  var ok = true;
   [["f-name","e-name",name,"請填寫姓名"],
    ["f-dept","e-dept",dept,"請填寫單位"],
-   ["f-phone","e-phone",phone,"請填寫連絡電話"]].forEach(([fid,eid,val,msg])=>{
-    if(!val){document.getElementById(eid).textContent=msg;document.getElementById(fid).classList.add("err");ok=false;}
-    else{document.getElementById(eid).textContent="";document.getElementById(fid).classList.remove("err");}
+   ["f-phone","e-phone",phone,"請填寫連絡電話"]].forEach(function(arr){
+    if (!arr[2]) {
+      document.getElementById(arr[1]).textContent = arr[3];
+      document.getElementById(arr[0]).classList.add("err");
+      ok = false;
+    } else {
+      document.getElementById(arr[1]).textContent = "";
+      document.getElementById(arr[0]).classList.remove("err");
+    }
   });
   if (!ok) return;
-  setBookModalLoading(true);
-  try {
-    await dbInsert({
-      date: selSlot.dk,
-      slot_start: selSlot.si,
-      duration: selDur,
-      name, dept, phone
+  setBookLoading(true);
+  dbInsert({ date:selSlot.dk, slot_start:selSlot.si, duration:chosenDuration, name:name, dept:dept, phone:phone })
+    .then(function(){
+      return loadWeek();
+    }).then(function(){
+      closeBook(); render();
+      showToast("✓ "+name+" 已預約 "+selSlot.dk+" "+slotTime(selSlot.si)+"–"+slotTime(selSlot.si+chosenDuration));
+    }).catch(function(e){
+      setBookLoading(false);
+      if (e.message && (e.message.indexOf("unique")>=0 || e.message.indexOf("duplicate")>=0)) {
+        showToast("⚠ 此時段已被預約，請選擇其他時段", "error");
+      } else {
+        showToast("⚠ 儲存失敗："+e.message, "error");
+      }
     });
-    await loadWeek();
-    closeBook();
-    render();
-    showToast(`✓ ${name} 已預約 ${selSlot.dk} ${slotTime(selSlot.si)}–${slotTime(selSlot.si+selDur)}`);
-  } catch(e) {
-    setBookModalLoading(false);
-    if (e.message.includes("unique") || e.message.includes("duplicate")) {
-      showToast("⚠ 此時段已被預約，請選擇其他時段", "error");
-    } else {
-      showToast("⚠ 儲存失敗："+e.message, "error");
-    }
-  }
 }
 
 // ── 詳情 Modal ────────────────────────────────────────────
 function showDetail(id) {
-  // 從快取找到這筆
-  let found = null;
-  Object.values(bookings).forEach(bk => {
-    Object.values(bk).forEach(b => {
+  var found = null;
+  Object.keys(bookings).forEach(function(dk){
+    Object.keys(bookings[dk]).forEach(function(si){
+      var b = bookings[dk][si];
       if (b.id===id && b.start===b.slot_start) found=b;
     });
   });
@@ -484,69 +466,71 @@ function showDetail(id) {
     ["單位", esc(found.dept)],
     ["電話", esc(found.phone)],
     ["日期", found.date],
-    ["時間", `${slotTime(found.slot_start)}–${slotTime(found.slot_start+found.duration)}`],
-    ["時長", `${found.duration*30} 分鐘`],
+    ["時間", slotTime(found.slot_start)+"–"+slotTime(found.slot_start+found.duration)],
+    ["時長", found.duration*30+" 分鐘"],
     ["預約於", found.booked_at ? new Date(found.booked_at).toLocaleString("zh-TW") : "—"]
-  ].map(([l,v])=>`<div class="detail-row"><div class="detail-lab">${l}</div><div class="detail-val">${v}</div></div>`).join("");
-  document.getElementById("del-btn").disabled=false;
-  document.getElementById("del-btn").textContent="取消預約";
+  ].map(function(arr){
+    return '<div class="detail-row"><div class="detail-lab">'+arr[0]+'</div><div class="detail-val">'+arr[1]+'</div></div>';
+  }).join("");
+  document.getElementById("del-btn").disabled = false;
+  document.getElementById("del-btn").textContent = "取消預約";
   document.getElementById("detail-modal").classList.add("open");
 }
 
 function closeDetail() { document.getElementById("detail-modal").classList.remove("open"); detailId=null; }
 
-async function cancelBook() {
+function cancelBook() {
   if (!detailId) return;
-  const btn = document.getElementById("del-btn");
+  var btn = document.getElementById("del-btn");
   btn.disabled=true; btn.textContent="處理中...";
-  try {
-    await dbDelete(detailId);
-    await loadWeek();
+  dbDelete(detailId).then(function(){
+    return loadWeek();
+  }).then(function(){
     closeDetail(); render();
     showToast("預約已取消");
-  } catch(e) {
+  }).catch(function(e){
     btn.disabled=false; btn.textContent="取消預約";
-    showToast("⚠ 取消失敗："+e.message,"error");
-  }
+    showToast("⚠ 取消失敗："+e.message, "error");
+  });
 }
 
 // ── 匯出 Excel ────────────────────────────────────────────
-async function exportExcel() {
-  const btn = document.getElementById("btn-export");
-  btn.disabled=true; btn.innerHTML='<i class="ti ti-loader" style="font-size:14px"></i>下載中...';
-  try {
-    const rows = await dbGetAll();
-    const data=[["日期","星期","時段","姓名","單位","連絡電話","預約時間"]];
-    rows.forEach(r=>{
-      const d=new Date(r.date);
-      data.push([
-        r.date,`星期${DAYS_ZH[d.getDay()]}`,
-        `${slotTime(r.slot_start)}–${slotTime(r.slot_start+r.duration)}`,
-        r.name, r.dept, r.phone,
-        r.booked_at?new Date(r.booked_at).toLocaleString("zh-TW"):""
-      ]);
+function exportExcel() {
+  var btn = document.getElementById("btn-export");
+  btn.disabled=true;
+  btn.innerHTML='<i class="ti ti-loader" style="font-size:14px"></i>下載中...';
+  dbGetAll().then(function(rows){
+    var data=[["日期","星期","時段","姓名","單位","連絡電話","預約時間"]];
+    rows.forEach(function(r){
+      var d = new Date(r.date);
+      data.push([r.date,"星期"+DAYS_ZH[d.getDay()],slotTime(r.slot_start)+"–"+slotTime(r.slot_start+r.duration),r.name,r.dept,r.phone,r.booked_at?new Date(r.booked_at).toLocaleString("zh-TW"):""]);
     });
-    const ws=XLSX.utils.aoa_to_sheet(data);
-    ws["!cols"]=[10,8,14,10,14,14,20].map(w=>({wch:w}));
-    const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb,ws,"預約記錄");
-    XLSX.writeFile(wb,`電腦預約記錄_${dayKey(new Date())}.xlsx`);
-  } catch(e) { showToast("⚠ 匯出失敗："+e.message,"error"); }
-  btn.disabled=false; btn.innerHTML='<i class="ti ti-table-export" style="font-size:14px"></i>匯出 Excel';
+    var ws = XLSX.utils.aoa_to_sheet(data);
+    ws["!cols"] = [10,8,14,10,14,14,20].map(function(w){return{wch:w};});
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "預約記錄");
+    XLSX.writeFile(wb, "電腦預約記錄_"+dayKey(new Date())+".xlsx");
+  }).catch(function(e){
+    showToast("⚠ 匯出失敗："+e.message,"error");
+  }).finally(function(){
+    btn.disabled=false;
+    btn.innerHTML='<i class="ti ti-table-export" style="font-size:14px"></i>匯出 Excel';
+  });
 }
 
 // ── Toast ─────────────────────────────────────────────────
-let toastTimer=null;
-function showToast(msg, type="success") {
-  const t=document.getElementById("toast");
-  t.textContent=msg; t.className=`toast show ${type}`;
+var toastTimer = null;
+function showToast(msg, type) {
+  type = type || "success";
+  var t = document.getElementById("toast");
+  t.textContent = msg; t.className = "toast show "+type;
   clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>t.classList.remove("show"),3000);
+  toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 3000);
 }
 
-// ── 點背景關閉 Modal ──────────────────────────────────────
-document.querySelectorAll(".modal-bg").forEach(bg=>{
-  bg.addEventListener("click",e=>{ if(e.target===bg) bg.classList.remove("open"); });
+// ── 點背景關閉 ────────────────────────────────────────────
+document.querySelectorAll(".modal-bg").forEach(function(bg){
+  bg.addEventListener("click", function(e){ if(e.target===bg) bg.classList.remove("open"); });
 });
 
 // ── 啟動 ──────────────────────────────────────────────────
